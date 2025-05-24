@@ -7,7 +7,9 @@ Group Scholar Yield Forecast is a data-backed CLI for projecting scholarship off
 - Cohort-level offer and acceptance rollups
 - Forecasted acceptances for active cohorts using historical yield
 - Optional filtering by cohort name
-- Table or JSON output formats
+- Target offer gap tracking per cohort
+- Table, CSV, or JSON output formats
+- Optional yield-rate override for scenario planning
 
 ## Tech
 
@@ -37,6 +39,7 @@ export PGDATABASE="postgres"
 ```bash
 ./bin/gs-yield-forecast --as-of=2026-02-08 --format=table
 ./bin/gs-yield-forecast --cohort="Spring 2025" --format=json
+./bin/gs-yield-forecast --yield-rate=0.62 --format=csv
 ```
 
 ## Database
@@ -51,6 +54,5 @@ Rscript -e "testthat::test_dir('tests/testthat')"
 
 ## Roadmap
 
-- Add scenario modeling for different yield assumptions
-- Export CSV reports for finance and ops teams
-- Add cohort-level target tracking
+- Add award amount forecasting for budget planning
+- Support cohort groupings (region/program)

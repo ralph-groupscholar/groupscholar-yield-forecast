@@ -1,10 +1,14 @@
-compute_yield_forecast <- function(cohorts, offers, as_of = Sys.Date()) {
+compute_yield_forecast <- function(cohorts, offers, as_of = Sys.Date(), yield_rate_override = NULL) {
   as_of <- as.Date(as_of)
 
   cohorts$start_date <- as.Date(cohorts$start_date)
   cohorts$end_date <- as.Date(cohorts$end_date)
   offers$offer_date <- as.Date(offers$offer_date)
   offers$accepted_at <- as.Date(offers$accepted_at)
+
+  if (!"target_offers" %in% names(cohorts)) {
+    cohorts$target_offers <- 0
+  }
 
   offers <- offers[offers$offer_date <= as_of, , drop = FALSE]
 
@@ -34,6 +38,10 @@ compute_yield_forecast <- function(cohorts, offers, as_of = Sys.Date()) {
     0.5
   }
 
+  if (!is.null(yield_rate_override)) {
+    baseline_rate <- max(min(yield_rate_override, 1), 0)
+  }
+
   summary$forecast_acceptances <- ifelse(
     summary$status == "closed",
     summary$accepted_count,
@@ -41,6 +49,7 @@ compute_yield_forecast <- function(cohorts, offers, as_of = Sys.Date()) {
   )
 
   summary$baseline_rate <- ifelse(summary$status == "closed", summary$acceptance_rate, baseline_rate)
+  summary$offer_gap <- summary$target_offers - summary$offers_count
 
   summary
 }

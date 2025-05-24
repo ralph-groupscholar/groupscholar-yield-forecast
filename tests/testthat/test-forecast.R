@@ -7,7 +7,8 @@ test_that("compute_yield_forecast calculates baseline and forecasts", {
     cohort_id = c(1, 2),
     name = c("Past", "Active"),
     start_date = as.Date(c("2024-01-01", "2025-01-01")),
-    end_date = as.Date(c("2024-06-01", "2026-06-01"))
+    end_date = as.Date(c("2024-06-01", "2026-06-01")),
+    target_offers = c(2, 5)
   )
 
   offers <- data.frame(
@@ -26,4 +27,32 @@ test_that("compute_yield_forecast calculates baseline and forecasts", {
   expect_equal(round(past$acceptance_rate, 2), 0.5)
   expect_equal(round(active$baseline_rate, 2), 0.5)
   expect_equal(active$forecast_acceptances, 1)
+  expect_equal(active$offer_gap, 3)
+})
+
+test_that("compute_yield_forecast honors yield overrides", {
+  cohorts <- data.frame(
+    cohort_id = 1,
+    name = "Active",
+    start_date = as.Date("2025-01-01"),
+    end_date = as.Date("2026-06-01"),
+    target_offers = 4
+  )
+
+  offers <- data.frame(
+    offer_id = 1:4,
+    cohort_id = 1,
+    offer_date = as.Date(c("2025-02-01", "2025-02-10", "2025-02-20", "2025-03-01")),
+    accepted_at = as.Date(c(NA, NA, NA, NA))
+  )
+
+  result <- compute_yield_forecast(
+    cohorts,
+    offers,
+    as_of = as.Date("2026-02-08"),
+    yield_rate_override = 0.75
+  )
+
+  expect_equal(round(result$baseline_rate, 2), 0.75)
+  expect_equal(result$forecast_acceptances, 3)
 })
