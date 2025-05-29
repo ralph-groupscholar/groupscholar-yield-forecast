@@ -8,6 +8,7 @@ Group Scholar Yield Forecast is a data-backed CLI for projecting scholarship off
 - Forecasted acceptances for active cohorts using historical yield
 - Optional filtering by cohort name
 - Target offer gap tracking per cohort
+- Award amount rollups with projected award spend
 - Table, CSV, or JSON output formats
 - Optional yield-rate override for scenario planning
 
@@ -54,5 +55,4 @@ Rscript -e "testthat::test_dir('tests/testthat')"
 
 ## Roadmap
 
-- Add award amount forecasting for budget planning
 - Support cohort groupings (region/program)

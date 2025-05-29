@@ -44,7 +44,7 @@ run_cli <- function() {
 
   offers <- DBI::dbGetQuery(
     conn,
-    "SELECT offer_id, cohort_id, offer_date, accepted_at FROM groupscholar_yield_forecast.offers"
+    "SELECT offer_id, cohort_id, offer_date, accepted_at, award_amount FROM groupscholar_yield_forecast.offers"
   )
 
   forecast <- compute_yield_forecast(
@@ -67,7 +67,11 @@ run_cli <- function() {
     "accepted_count",
     "acceptance_rate",
     "baseline_rate",
-    "forecast_acceptances"
+    "forecast_acceptances",
+    "offers_total_award",
+    "accepted_award_total",
+    "average_award",
+    "forecast_award_total"
   )]
 
   if (args$format == "json") {
