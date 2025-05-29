@@ -1,4 +1,8 @@
-compute_yield_forecast <- function(cohorts, offers, as_of = Sys.Date(), yield_rate_override = NULL) {
+compute_yield_forecast <- function(cohorts,
+                                   offers,
+                                   as_of = Sys.Date(),
+                                   yield_rate_override = NULL,
+                                   group_by = NULL) {
   as_of <- as.Date(as_of)
 
   cohorts$start_date <- as.Date(cohorts$start_date)
@@ -8,6 +12,14 @@ compute_yield_forecast <- function(cohorts, offers, as_of = Sys.Date(), yield_ra
 
   if (!"target_offers" %in% names(cohorts)) {
     cohorts$target_offers <- 0
+  }
+
+  if (!"program" %in% names(cohorts)) {
+    cohorts$program <- "Unassigned"
+  }
+
+  if (!"region" %in% names(cohorts)) {
+    cohorts$region <- "Unassigned"
   }
 
   if (!"award_amount" %in% names(offers)) {
@@ -69,24 +81,114 @@ compute_yield_forecast <- function(cohorts, offers, as_of = Sys.Date(), yield_ra
     0.5
   }
 
+  group_rates <- NULL
+  if (!is.null(group_by)) {
+    if (!group_by %in% c("program", "region")) {
+      stop("group_by must be one of: program, region")
+    }
+    if (nrow(closed) > 0) {
+      group_rates <- aggregate(
+        cbind(accepted_count, offers_count) ~ closed[[group_by]],
+        closed,
+        sum
+      )
+      names(group_rates)[1] <- "group"
+      group_rates$group_baseline <- ifelse(
+        group_rates$offers_count > 0,
+        group_rates$accepted_count / group_rates$offers_count,
+        NA
+      )
+    }
+  }
+
   if (!is.null(yield_rate_override)) {
     baseline_rate <- max(min(yield_rate_override, 1), 0)
   }
 
+  summary$baseline_rate <- baseline_rate
+  if (!is.null(group_by) && is.null(yield_rate_override) && !is.null(group_rates)) {
+    group_match <- match(summary[[group_by]], group_rates$group)
+    group_baseline <- group_rates$group_baseline[group_match]
+    summary$baseline_rate <- ifelse(
+      !is.na(group_baseline),
+      group_baseline,
+      baseline_rate
+    )
+  }
+
+  summary$baseline_rate <- ifelse(
+    summary$status == "closed",
+    summary$acceptance_rate,
+    summary$baseline_rate
+  )
+
   summary$forecast_acceptances <- ifelse(
     summary$status == "closed",
     summary$accepted_count,
-    round(summary$offers_count * baseline_rate)
+    round(summary$offers_count * summary$baseline_rate)
   )
 
   summary$forecast_award_total <- ifelse(
     summary$status == "closed",
     summary$accepted_award_total,
-    round(summary$offers_total_award * baseline_rate, 2)
+    round(summary$offers_total_award * summary$baseline_rate, 2)
   )
 
-  summary$baseline_rate <- ifelse(summary$status == "closed", summary$acceptance_rate, baseline_rate)
   summary$offer_gap <- summary$target_offers - summary$offers_count
 
-  summary
+  if (is.null(group_by)) {
+    return(summary)
+  }
+
+  group_values <- summary[[group_by]]
+  grouped <- aggregate(
+    cbind(
+      target_offers,
+      offers_count,
+      offer_gap,
+      accepted_count,
+      forecast_acceptances,
+      offers_total_award,
+      accepted_award_total,
+      forecast_award_total
+    ) ~ group_values,
+    summary,
+    sum
+  )
+  names(grouped)[1] <- "group"
+
+  grouped$acceptance_rate <- ifelse(
+    grouped$offers_count > 0,
+    grouped$accepted_count / grouped$offers_count,
+    0
+  )
+
+  grouped$average_award <- ifelse(
+    grouped$offers_count > 0,
+    grouped$offers_total_award / grouped$offers_count,
+    0
+  )
+
+  status_map <- tapply(summary$status, group_values, function(values) {
+    if (all(values == "closed")) {
+      "closed"
+    } else if (all(values == "active")) {
+      "active"
+    } else {
+      "mixed"
+    }
+  })
+  grouped$status <- unname(status_map[grouped$group])
+
+  if (!is.null(yield_rate_override)) {
+    grouped$baseline_rate <- baseline_rate
+  } else if (!is.null(group_rates)) {
+    rate_match <- match(grouped$group, group_rates$group)
+    grouped$baseline_rate <- group_rates$group_baseline[rate_match]
+    grouped$baseline_rate[is.na(grouped$baseline_rate)] <- baseline_rate
+  } else {
+    grouped$baseline_rate <- baseline_rate
+  }
+
+  grouped
 }

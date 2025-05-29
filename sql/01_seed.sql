@@ -1,11 +1,17 @@
-INSERT INTO groupscholar_yield_forecast.cohorts (name, start_date, end_date, target_offers)
-VALUES
-  ('Spring 2024', '2024-01-10', '2024-05-20', 120),
-  ('Fall 2024', '2024-08-15', '2024-12-10', 140),
-  ('Spring 2025', '2025-01-12', '2025-05-22', 150),
-  ('Fall 2025', '2025-08-18', '2025-12-12', 165),
-  ('Spring 2026', '2026-01-13', '2026-05-23', 175)
-ON CONFLICT DO NOTHING;
+INSERT INTO groupscholar_yield_forecast.cohorts (name, start_date, end_date, target_offers, program, region)
+SELECT name, start_date, end_date, target_offers, program, region
+FROM (
+  VALUES
+    ('Spring 2024', DATE '2024-01-10', DATE '2024-05-20', 120, 'STEM Scholars', 'Midwest'),
+    ('Fall 2024', DATE '2024-08-15', DATE '2024-12-10', 140, 'STEM Scholars', 'Northeast'),
+    ('Spring 2025', DATE '2025-01-12', DATE '2025-05-22', 150, 'Arts & Culture', 'South'),
+    ('Fall 2025', DATE '2025-08-18', DATE '2025-12-12', 165, 'Arts & Culture', 'West'),
+    ('Spring 2026', DATE '2026-01-13', DATE '2026-05-23', 175, 'Leadership Fellows', 'Midwest')
+) AS seed(name, start_date, end_date, target_offers, program, region)
+WHERE NOT EXISTS (
+  SELECT 1 FROM groupscholar_yield_forecast.cohorts
+  WHERE cohorts.name = seed.name AND cohorts.start_date = seed.start_date
+);
 
 INSERT INTO groupscholar_yield_forecast.offers (cohort_id, offer_date, accepted_at, award_amount)
 SELECT cohort_id, offer_date, accepted_at, award_amount
